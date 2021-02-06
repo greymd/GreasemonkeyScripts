@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Pixiv Dashboard CVR
 // @namespace    PixivDashboardCVR
-// @version      0.1
+// @version      1.0
 // @description  Display the conversion rate (bookmarks/viewer) on the artwork dashboard.
-// @downloadURL  https://.js
-// @updateURL    https://.js
+// @downloadURL  https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/pixiv.net/PixivDashboardCVR.user.js
+// @updateURL    https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/pixiv.net/PixivDashboardCVR.user.js
 // @author       @greymd
 // @match        https://www.pixiv.net/dashboard/works
 // @grant        none
