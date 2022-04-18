@@ -10,7 +10,7 @@
 // @grant        GM_setClipboard
 // ==/UserScript==
 
-let debug = true;
+let debug = false;
 
 function isElement(obj) {
   try {
