@@ -1,16 +1,16 @@
 // ==UserScript==
 // @name         TVerCopyURL
 // @namespace    TVerCopyURL
-// @version      1.0
+// @version      1.1
 // @description  Copy URL of TVer
 // @downloadURL  https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/tver.jp/TVerCopyURL.user.js
 // @updateURL    https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/tver.jp/TVerCopyURL.user.js
 // @author       @greymd
-// @match        https://tver.jp/corner/*
+// @match        https://tver.jp/episodes/*
 // @grant        GM_setClipboard
 // ==/UserScript==
 
-let debug = false;
+let debug = true;
 
 function isElement(obj) {
   try {
@@ -35,32 +35,35 @@ new MutationObserver(() => {
   let dataVideoIdElem = null
   if(debug) console.log('TVerCopyURL: start');
   if (isButtonExisting()) {
+    if(debug) console.log('TVerCopyURL: isButtonExisting() is true. exit.');
     return;
   }
-  if(/tver\.jp\/corner\/.*/.test(location.href)) {
-    dataAccountElem = document.getElementById('abcPlayer_html5_api')
-    dataVideoIdElem = document.getElementById('abcPlayer')
+  if(/tver\.jp\/episodes\/.*/.test(location.href)) {
+    dataAccountElem = document.getElementsByTagName('video-js')[0]
+    dataVideoIdElem = document.getElementsByTagName('video-js')[0]
   } else {
+      if(debug) console.log('TVerCopyURL: location is not still proper. exit.');
       return;
   }
   if (isElement(dataVideoIdElem) && isElement(dataAccountElem)) {
     dataAccount = dataAccountElem.getAttribute('data-account')
     dataVideoId = dataVideoIdElem.getAttribute('data-video-id')
   } else {
+      if(debug) console.log('TVerCopyURL: There are no necessary elements. exit.');
     return;
   }
   if (!/^\d+$/.test(dataAccount) || !/^\d+$/.test(dataVideoId)) {
-    if(debug) console.log("TVerCopyURL: " + dataAccount)
-    if(debug) console.log("TVerCopyURL: " + dataVideoId)
+    if(debug) console.log("TVerCopyURL: dataAccount = " + dataAccount)
+    if(debug) console.log("TVerCopyURL: dataVideoId = " + dataVideoId)
     return;
   }
-  let selector = document.querySelector("#contents > div.bg > section:nth-child(1) > div > div.companionad-main > div.btnarea > div")
+  let selector = document.querySelector("#__next > div > div:nth-of-type(1) > div > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(2)")
   if(debug) console.log('TVerCopyURL: insertButton');
   let button = document.createElement("button");
   let url = "http://players.brightcove.net/" + dataAccount + "/default_default/index.html?videoId=" + dataVideoId
   console.log(url)
   button.innerHTML = "TVerCopyURL";
-  button.setAttribute("style","color: white")
+  button.setAttribute("style","color: black; background-color: white")
   button.setAttribute("id","TVerCopyURL")
   button.addEventListener("click", function() {
     GM_setClipboard(url);
