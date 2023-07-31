@@ -57,17 +57,17 @@ new MutationObserver(() => {
     if(debug) console.log("TVerCopyURL: dataVideoId = " + dataVideoId)
     return;
   }
-  let selector = document.querySelector("#__next > div > div:nth-of-type(1) > div > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(2)")
+  // let selector = document.querySelector("#__next > div > div:nth-of-type(1) > div > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(2)")
   if(debug) console.log('TVerCopyURL: insertButton');
   let button = document.createElement("button");
   let url = "http://players.brightcove.net/" + dataAccount + "/default_default/index.html?videoId=" + dataVideoId
   console.log(url)
   button.innerHTML = "TVerCopyURL";
-  button.setAttribute("style","color: black; background-color: white")
+  button.setAttribute("style","position: fixed; top: 0; left: 0; width: 100px; height: 50px;")
   button.setAttribute("id","TVerCopyURL")
   button.addEventListener("click", function() {
     GM_setClipboard(url);
     button.innerHTML = "Copied!    "
   }, false);
-  selector.appendChild(button);
+  document.body.appendChild(button);
 }).observe(document.body, {childList: true, subtree: true});
