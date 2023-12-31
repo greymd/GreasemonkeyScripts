@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            Pixiv Show bookmark count
-// @version         5.0.3
+// @version         5.0.4
 // @match           https://www.pixiv.net/*
 // @description     !!!!! This script is fork of https://greasyfork.org/users/7945 !!!!!
 // @downloadURL     https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/pixiv.net/PixivShowBookmark.user.js
