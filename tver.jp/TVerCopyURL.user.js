@@ -70,4 +70,11 @@ new MutationObserver(() => {
     button.innerHTML = "Copied!    "
   }, false);
   document.body.appendChild(button);
-}).observe(document.body, {childList: true, subtree: true});
+}).observe(document.body, {
+  childList: true,
+  subtree: true,
+  attributes: true,
+  characterData: true,
+  attributeOldValue: true,
+  characterDataOldValue: true,
+});
