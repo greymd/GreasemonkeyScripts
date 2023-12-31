@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         TVerCopyURL
 // @namespace    TVerCopyURL
-// @version      1.1
+// @version      1.2
 // @description  Copy URL of TVer
 // @downloadURL  https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/tver.jp/TVerCopyURL.user.js
 // @updateURL    https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/tver.jp/TVerCopyURL.user.js
 // @author       @greymd
-// @match        https://tver.jp/episodes/*
+// @match        https://tver.jp/*
 // @grant        GM_setClipboard
 // ==/UserScript==
 
