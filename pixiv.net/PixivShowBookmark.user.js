@@ -35,4 +35,11 @@ new MutationObserver(() => {
     const bmcount = (await (await fetch('https://www.pixiv.net/ajax/illust/' + illust_ID, {credentials: 'omit'})).json()).body.bookmarkCount;
     if (bmcount > 0) tarobj.insertAdjacentHTML('beforeend', '<div class="bmcount"><a href="/bookmark_detail.php?illust_id=' + illust_ID + '">' + bmcount + '</a></div>');
   });
-}).observe(document.body, {childList: true, subtree: true});
+}).observe(document.body, {
+  childList: true,
+  subtree: true,
+  attributes: true,
+  characterData: true,
+  attributeOldValue: true,
+  characterDataOldValue: true,
+});
