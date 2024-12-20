@@ -6,8 +6,8 @@ console.aws.amazon.com// ==UserScript==
 // @author       @greymd
 // @match        https://*.console.aws.amazon.com/*/*
 // @grant        none
-// @downloadURL     https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/aws.console/HideAwsAccountBar.user.js
-// @updateURL       https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/aws.console/HideAwsAccountBar.user.js
+// @downloadURL     https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/console.aws.amazon.com/HideAwsAccountBar.user.js
+// @updateURL       https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/console.aws.amazon.com/HideAwsAccountBar.user.js
 // ==/UserScript==
 
 new MutationObserver(() => {
