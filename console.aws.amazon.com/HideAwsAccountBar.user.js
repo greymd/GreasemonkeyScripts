@@ -1,7 +1,7 @@
 console.aws.amazon.com// ==UserScript==
 // @name         Hide AWS Account Bar
 // @namespace    HideAwsAccountBar
-// @version      1.0
+// @version      1.1
 // @description  Remove AWS Account ID / User navbar from AWS Console
 // @author       @greymd
 // @match        https://*.console.aws.amazon.com/*/*
