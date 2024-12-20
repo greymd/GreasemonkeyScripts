@@ -11,7 +11,7 @@ console.aws.amazon.com// ==UserScript==
 new MutationObserver(() => {
     var target = document.getElementById('nav-usernameMenu');
     if (target) {
-        target.parentNode.removeChild(username);
+        target.parentNode.removeChild(target);
     }
 }).observe(document.body, {
   childList: true,
