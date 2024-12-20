@@ -1,7 +1,7 @@
 console.aws.amazon.com// ==UserScript==
 // @name         Hide AWS Account Bar
 // @namespace    HideAwsAccountBar
-// @version      1.1
+// @version      1.2
 // @description  Remove AWS Account ID / User navbar from AWS Console
 // @author       @greymd
 // @match        https://*.console.aws.amazon.com/*/*
@@ -11,10 +11,10 @@ console.aws.amazon.com// ==UserScript==
 // ==/UserScript==
 
 new MutationObserver(() => {
-    var target = document.getElementById('nav-usernameMenu');
-    if (target) {
-        target.parentNode.removeChild(target);
-    }
+  var username = document.getElementById('nav-usernameMenu');
+  if (username) {
+      username.parentNode.removeChild(username);
+  }
 }).observe(document.body, {
   childList: true,
   subtree: true,
