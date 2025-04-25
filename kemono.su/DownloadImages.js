@@ -75,7 +75,7 @@
                 console.error('Failed to download:', url, err);
             }
 
-            await sleep(1000);
+            await sleep(200);
         }
 
         dlBtn.textContent = 'Done!';
