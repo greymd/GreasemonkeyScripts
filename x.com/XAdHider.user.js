@@ -7,6 +7,8 @@
 // @match        https://twitter.com/*
 // @match        https://x.com/*
 // @grant        none
+// @downloadURL  https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/x.com/XAdHider.user.js
+// @updateURL    https://raw.githubusercontent.com/greymd/GreasemonkeyScripts/main/x.com/XAdHider.user.js
 // ==/UserScript==
 
 (function () {
