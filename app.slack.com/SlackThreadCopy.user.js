@@ -25,7 +25,7 @@
     const button = document.createElement("button");
     button.type = "button";
     button.className =
-      "c-button-unstyled c-icon_button c-icon_button--size_medium viewHeaderActionButton__d6GTR c-icon_button--default";
+      "c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default";
     button.setAttribute("data-qa", "thread_copy_button");
     button.setAttribute("aria-label", "Copy thread");
     button.setAttribute("tabindex", "0");
