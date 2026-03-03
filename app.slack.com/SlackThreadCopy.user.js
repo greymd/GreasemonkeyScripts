@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Slack Thread Copy
 // @namespace    https://github.com/greymd/GreasemonkeyScripts
-// @version      0.1.0
+// @version      0.2.0
 // @description  Copy thread conversation as plain text to clipboard
 // @author       greymd
 // @match        https://app.slack.com/*
@@ -13,7 +13,7 @@
 (function () {
   "use strict";
 
-  const DEBUG = true;
+  const DEBUG = false;
   function log(...args) {
     if (DEBUG) console.log("[SlackThreadCopy]", ...args);
   }
