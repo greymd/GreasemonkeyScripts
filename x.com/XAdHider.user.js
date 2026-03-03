@@ -2,7 +2,7 @@
 // @name         X Ad Hider
 // @namespace    https://github.com/
 // @version      1.0.1
-// @description  Hide ads on X (Twitter)
+// @description  Hide ads on X, rot in hell, X. Give us Twitter back.
 // @author       greymd
 // @match        https://twitter.com/*
 // @match        https://x.com/*

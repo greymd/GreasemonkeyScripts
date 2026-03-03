@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Copy HTML on Kemono.su
+// @name         Copy HTML
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  Add a button to copy the full HTML content of the page
