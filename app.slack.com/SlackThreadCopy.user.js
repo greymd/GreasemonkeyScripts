@@ -13,9 +13,271 @@
 (function () {
   "use strict";
 
+  const DEBUG = false;
+  function log(...args) {
+    if (DEBUG) console.log("[SlackThreadCopy]", ...args);
+  }
+
   const COPY_BUTTON_ID = "slack-thread-copy-button";
   const COPY_ICON_SVG =
     '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="var(--dt_color-content-sec)" aria-hidden="true"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>';
+
+  /**
+   * Converts a Slack message body node (rich text / block kit) to plain text with simple markdown.
+   * Handles: mentions (data-member-label), links, blockquotes, inline code, bold, italic, emoji, line breaks.
+   */
+  function messageBodyToMarkdown(bodyRoot) {
+    if (!bodyRoot) return "";
+
+    function escapeBackticks(s) {
+      return s.replace(/`/g, "`\u200b");
+    }
+
+    function walk(node, out) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        out.push(node.textContent);
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+      const el = node;
+      const tag = el.tagName.toLowerCase();
+
+      if (el.getAttribute?.("data-stringify-ignore") === "true") return;
+
+      if (tag === "br" || el.classList?.contains("c-mrkdwn__br")) {
+        out.push("\n");
+        return;
+      }
+
+      if (tag === "blockquote" && el.classList?.contains("c-mrkdwn__quote")) {
+        const inner = [];
+        for (const child of el.childNodes) walk(child, inner);
+        const text = inner.join("").trim();
+        out.push("\n> " + text.split("\n").join("\n> ") + "\n");
+        return;
+      }
+
+      if (tag === "code" && el.classList?.contains("c-mrkdwn__code")) {
+        const inner = [];
+        for (const child of el.childNodes) walk(child, inner);
+        out.push("`" + escapeBackticks(inner.join("").trim()) + "`");
+        return;
+      }
+
+      if ((tag === "pre" && el.classList?.contains("c-mrkdwn__pre")) || el.getAttribute?.("data-stringify-type") === "pre") {
+        const inner = [];
+        for (const child of el.childNodes) walk(child, inner);
+        const text = inner.join("").trim();
+        if (text) out.push("\n```\n" + text + "\n```\n");
+        return;
+      }
+
+      if (tag === "ul" && el.classList?.contains("p-rich_text_list")) {
+        const items = el.querySelectorAll(":scope > li");
+        for (const li of items) {
+          const inner = [];
+          for (const child of li.childNodes) walk(child, inner);
+          out.push("\n- " + inner.join("").trim());
+        }
+        out.push("\n");
+        return;
+      }
+
+      if (tag === "li" && el.closest?.("ul.p-rich_text_list")) {
+        return;
+      }
+
+      if (el.classList?.contains("c-rich_text_expand_button")) {
+        return;
+      }
+
+      if (tag === "b" || el.getAttribute?.("data-stringify-type") === "bold") {
+        const inner = [];
+        for (const child of el.childNodes) walk(child, inner);
+        out.push("**" + inner.join("").trim() + "**");
+        return;
+      }
+
+      if (tag === "i" || el.getAttribute?.("data-stringify-type") === "italic") {
+        const inner = [];
+        for (const child of el.childNodes) walk(child, inner);
+        out.push("*" + inner.join("").trim() + "*");
+        return;
+      }
+
+      if (tag === "a") {
+        const mentionLabel = el.getAttribute("data-member-label") ?? el.getAttribute("data-stringify-label");
+        if (mentionLabel) {
+          out.push(mentionLabel);
+          return;
+        }
+        const href = el.getAttribute("href") ?? el.getAttribute("data-stringify-link") ?? "";
+        const inner = [];
+        for (const child of el.childNodes) walk(child, inner);
+        const text = inner.join("").trim() || href;
+        if (href && text !== href) {
+          out.push("[" + text + "](" + href + ")");
+        } else {
+          out.push(text || href);
+        }
+        return;
+      }
+
+      if (tag === "img" && (el.getAttribute("data-stringify-type") === "emoji" || el.classList?.contains("c-emoji"))) {
+        const emoji = el.getAttribute("data-stringify-emoji") ?? el.getAttribute("alt") ?? "";
+        if (emoji) out.push(emoji);
+        return;
+      }
+
+      for (const child of el.childNodes) {
+        walk(child, out);
+      }
+    }
+
+    const out = [];
+    walk(bodyRoot, out);
+    return out
+      .join("")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  /**
+   * Extracts sender name from a message container (optional in compact view).
+   */
+  function getSender(container) {
+    const btn = container.querySelector('[data-qa="message_sender_name"]');
+    return btn ? btn.textContent.trim() : "";
+  }
+
+  /**
+   * Extracts timestamp label from a message container.
+   */
+  function getTimestamp(container) {
+    const label = container.querySelector('[data-qa="timestamp_label"]');
+    return label ? label.textContent.trim() : "";
+  }
+
+  /**
+   * Gets the message body root element ([data-qa="message-text"]) from a message container.
+   */
+  function getMessageBodyRoot(container) {
+    return container.querySelector('[data-qa="message-text"]');
+  }
+
+  /**
+   * Gets attachment text blocks (e.g. "From a thread" reply snippet) and converts them to markdown.
+   */
+  function getAttachmentBodies(container) {
+    const rows = container.querySelectorAll('[data-qa="message_attachment_slack_msg_text"]');
+    return Array.from(rows).map((row) => messageBodyToMarkdown(row)).filter(Boolean);
+  }
+
+  /**
+   * Converts a single message container to a markdown line block: "**Sender** Timestamp\n\nBody"
+   */
+  function messageContainerToMarkdown(container) {
+    const sender = getSender(container);
+    const timestamp = getTimestamp(container);
+    const bodyRoot = getMessageBodyRoot(container);
+    let body = messageBodyToMarkdown(bodyRoot);
+    const attachmentBodies = getAttachmentBodies(container);
+    if (attachmentBodies.length) {
+      body = [body, ...attachmentBodies].filter(Boolean).join("\n\n");
+    }
+
+    const header = [sender && `**${sender}**`, timestamp].filter(Boolean).join(" ");
+    if (!header && !body) return "";
+    if (!body) return header + "\n";
+    return header ? header + "\n\n" + body : body;
+  }
+
+  /**
+   * Returns the thread list root element (the virtual list wrapper).
+   */
+  function getThreadListRoot() {
+    return (
+      document.querySelector("[id*='thread-list-Thread']") ??
+      document.querySelector("[id*='thread-list']")
+    );
+  }
+
+  /**
+   * Finds the scrollable element inside the thread list (viewport that has scroll).
+   */
+  function getThreadScrollElement() {
+    const root = getThreadListRoot();
+    if (!root) return null;
+    const withScroll = root.querySelector(".c-virtual_list") ?? root.querySelector("[data-qa='slack_kit_scrollbar']") ?? root;
+    for (const el of [withScroll, root]) {
+      if (!el) continue;
+      if (el.scrollHeight > el.clientHeight) return el;
+    }
+    return withScroll ?? root;
+  }
+
+  /**
+   * Scrolls the thread list to the end in steps so the virtual list renders all items.
+   */
+  async function scrollThreadToLoadAll() {
+    const scrollEl = getThreadScrollElement();
+    if (!scrollEl || scrollEl.scrollHeight <= scrollEl.clientHeight) return;
+    const step = Math.max(300, scrollEl.clientHeight - 50);
+    const end = scrollEl.scrollHeight - scrollEl.clientHeight;
+    let lastCount = 0;
+    let stable = 0;
+    for (let pos = 0; pos < end; pos += step) {
+      scrollEl.scrollTop = Math.min(pos + step, end);
+      await new Promise((r) => setTimeout(r, 120));
+      const count = getThreadMessageContainers().length;
+      if (count === lastCount) {
+        stable++;
+        if (stable >= 3) break;
+      } else {
+        stable = 0;
+      }
+      lastCount = count;
+    }
+    scrollEl.scrollTop = end;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+
+  /**
+   * Waits a bit for Slack to finish rendering after scroll.
+   */
+  function waitForVirtualListRender() {
+    return new Promise((resolve) => setTimeout(resolve, 300));
+  }
+
+  /**
+   * Finds the thread list root and collects all message containers.
+   * Call after scrollThreadToLoadAll() + waitForVirtualListRender() to get full thread.
+   */
+  function getThreadMessageContainers() {
+    const threadListRoot = getThreadListRoot();
+    if (threadListRoot) {
+      const list = threadListRoot.querySelectorAll('[data-qa="message_container"]');
+      return Array.from(list);
+    }
+    const header = document.querySelector(".p-flexpane_header__primary");
+    if (!header) return [];
+    const pane = header.parentElement;
+    const list = pane?.querySelectorAll('[data-qa="message_container"]');
+    return list ? Array.from(list) : [];
+  }
+
+  /**
+   * Builds full thread as plain text with simple markdown.
+   * Scrolls to bottom first so the virtual list renders all messages.
+   */
+  async function threadToMarkdown() {
+    await scrollThreadToLoadAll();
+    await waitForVirtualListRender();
+    const containers = getThreadMessageContainers();
+    const parts = containers.map(messageContainerToMarkdown).filter(Boolean);
+    return parts.join("\n\n---\n\n");
+  }
 
   function createCopyButton() {
     const span = document.createElement("span");
@@ -32,13 +294,16 @@
     button.id = COPY_BUTTON_ID;
     button.innerHTML = COPY_ICON_SVG;
 
-    button.addEventListener("click", () => {
-      const dummyContent = [
-        "(Dummy content)",
-        "This is a test for thread copy.",
-        "The actual thread body will be fetched in the next phase.",
-      ].join("\n");
-      GM_setClipboard(dummyContent, "text");
+    button.addEventListener("click", async () => {
+      const content = await threadToMarkdown();
+      log("copy click: threadToMarkdown length =", content?.length ?? 0);
+      const text =
+        content ||
+        [
+          "(No thread messages found)",
+          "Open a thread and try again.",
+        ].join("\n");
+      GM_setClipboard(text, "text");
     });
 
     span.appendChild(button);
