@@ -13,7 +13,7 @@
 (function () {
   "use strict";
 
-  const DEBUG = false;
+  const DEBUG = true;
   function log(...args) {
     if (DEBUG) console.log("[SlackThreadCopy]", ...args);
   }
@@ -205,16 +205,51 @@
 
   /**
    * Finds the scrollable element inside the thread list (viewport that has scroll).
+   * Checks root and descendants; returns the scrollable one with the largest scrollHeight.
    */
   function getThreadScrollElement() {
     const root = getThreadListRoot();
+    log("getThreadScrollElement: root =", root, "id =", root?.id);
     if (!root) return null;
-    const withScroll = root.querySelector(".c-virtual_list") ?? root.querySelector("[data-qa='slack_kit_scrollbar']") ?? root;
-    for (const el of [withScroll, root]) {
-      if (!el) continue;
-      if (el.scrollHeight > el.clientHeight) return el;
+
+    const listEl = root.querySelector("[data-qa='slack_kit_list']");
+    const candidates = [
+      root,
+      root.querySelector(".c-virtual_list"),
+      root.querySelector("[data-qa='slack_kit_scrollbar']"),
+      root.querySelector(".c-scrollbar__hider"),
+      root.querySelector(".c-scrollbar__child"),
+      listEl?.parentElement,
+      listEl?.parentElement?.parentElement,
+    ].filter(Boolean);
+
+    let best = null;
+    for (const el of candidates) {
+      const sh = el.scrollHeight;
+      const ch = el.clientHeight;
+      const scrollable = sh > ch;
+      log("  candidate", el.className?.slice?.(0, 50), "scrollHeight =", sh, "clientHeight =", ch, "scrollable =", scrollable);
+      if (scrollable && (!best || el.scrollHeight > best.scrollHeight)) {
+        best = el;
+      }
     }
-    return withScroll ?? root;
+
+    if (!best) {
+      const walk = (node, depth) => {
+        if (depth > 8) return;
+        if (node.nodeType !== 1) return;
+        const el = node;
+        if (el.scrollHeight > el.clientHeight && (!best || el.scrollHeight > best.scrollHeight)) {
+          best = el;
+        }
+        for (const child of el.children) walk(child, depth + 1);
+      };
+      for (const child of root.children) walk(child, 0);
+      if (best) log("  found scrollable via walk:", best.className?.slice?.(0, 50));
+    }
+
+    log("getThreadScrollElement: best =", best, "scrollHeight =", best?.scrollHeight);
+    return best ?? root;
   }
 
   /**
@@ -222,9 +257,21 @@
    */
   async function scrollThreadToLoadAll() {
     const scrollEl = getThreadScrollElement();
-    if (!scrollEl || scrollEl.scrollHeight <= scrollEl.clientHeight) return;
+    log("scrollThreadToLoadAll: scrollEl =", !!scrollEl, "scrollHeight =", scrollEl?.scrollHeight, "clientHeight =", scrollEl?.clientHeight);
+    if (!scrollEl || scrollEl.scrollHeight <= scrollEl.clientHeight) {
+      log("scrollThreadToLoadAll: skip (no scroll or no element)");
+      return;
+    }
     const step = Math.max(300, scrollEl.clientHeight - 50);
     const end = scrollEl.scrollHeight - scrollEl.clientHeight;
+    log("scrollThreadToLoadAll: end =", end, "step =", step);
+    scrollEl.scrollTop = step;
+    await new Promise((r) => setTimeout(r, 50));
+    const afterFirst = scrollEl.scrollTop;
+    log("scrollThreadToLoadAll: after first scroll scrollTop =", afterFirst, "(expected ~", step, ")");
+    if (afterFirst === 0 && end > 0) {
+      log("scrollThreadToLoadAll: scrollTop did not change - element may not be scrollable (overflow?)");
+    }
     let lastCount = 0;
     let stable = 0;
     for (let pos = 0; pos < end; pos += step) {
