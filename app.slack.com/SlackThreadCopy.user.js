@@ -252,8 +252,10 @@
     return best ?? root;
   }
 
+  let scrollThreadCollected = null;
+
   /**
-   * Scrolls the thread list to the end in steps so the virtual list renders all items.
+   * Scrolls the thread list in steps, collecting message content at each step (virtual list unmounts off-screen items).
    */
   async function scrollThreadToLoadAll() {
     const scrollEl = getThreadScrollElement();
@@ -262,32 +264,41 @@
       log("scrollThreadToLoadAll: skip (no scroll or no element)");
       return;
     }
-    const step = Math.max(300, scrollEl.clientHeight - 50);
     const end = scrollEl.scrollHeight - scrollEl.clientHeight;
+    const step = Math.max(250, Math.floor(scrollEl.clientHeight * 0.6));
+    const delayMs = 100;
     log("scrollThreadToLoadAll: end =", end, "step =", step);
     scrollEl.scrollTop = step;
     await new Promise((r) => setTimeout(r, 50));
     const afterFirst = scrollEl.scrollTop;
-    log("scrollThreadToLoadAll: after first scroll scrollTop =", afterFirst, "(expected ~", step, ")");
+    log("scrollThreadToLoadAll: after first scroll scrollTop =", afterFirst);
     if (afterFirst === 0 && end > 0) {
       log("scrollThreadToLoadAll: scrollTop did not change - element may not be scrollable (overflow?)");
     }
-    let lastCount = 0;
-    let stable = 0;
-    for (let pos = 0; pos < end; pos += step) {
-      scrollEl.scrollTop = Math.min(pos + step, end);
-      await new Promise((r) => setTimeout(r, 120));
-      const count = getThreadMessageContainers().length;
-      if (count === lastCount) {
-        stable++;
-        if (stable >= 3) break;
-      } else {
-        stable = 0;
+    const collectedByTs = new Map();
+    for (let pos = 0; pos <= end; pos += step) {
+      scrollEl.scrollTop = Math.min(pos, end);
+      await new Promise((r) => setTimeout(r, delayMs));
+      for (const container of getThreadMessageContainers()) {
+        const ts = container.getAttribute("data-msg-ts");
+        if (ts && !collectedByTs.has(ts)) {
+          collectedByTs.set(ts, messageContainerToMarkdown(container));
+        }
       }
-      lastCount = count;
     }
     scrollEl.scrollTop = end;
-    await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, 200));
+    for (const container of getThreadMessageContainers()) {
+      const ts = container.getAttribute("data-msg-ts");
+      if (ts && !collectedByTs.has(ts)) {
+        collectedByTs.set(ts, messageContainerToMarkdown(container));
+      }
+    }
+    scrollThreadCollected = Array.from(collectedByTs.entries())
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+      .map(([, md]) => md)
+      .filter(Boolean);
+    log("scrollThreadToLoadAll: collected", scrollThreadCollected.length, "messages");
   }
 
   /**
@@ -316,14 +327,14 @@
 
   /**
    * Builds full thread as plain text with simple markdown.
-   * Scrolls to bottom first so the virtual list renders all messages.
+   * Scrolls through the list while collecting so we get all messages (virtual list drops off-screen items).
    */
   async function threadToMarkdown() {
+    scrollThreadCollected = null;
     await scrollThreadToLoadAll();
     await waitForVirtualListRender();
-    const containers = getThreadMessageContainers();
-    const parts = containers.map(messageContainerToMarkdown).filter(Boolean);
-    return parts.join("\n\n---\n\n");
+    const parts = scrollThreadCollected ?? getThreadMessageContainers().map(messageContainerToMarkdown).filter(Boolean);
+    return Array.isArray(parts) ? parts.join("\n\n---\n\n") : "";
   }
 
   function createCopyButton() {
