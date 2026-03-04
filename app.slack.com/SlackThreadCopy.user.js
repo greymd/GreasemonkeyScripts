@@ -211,7 +211,7 @@
   }
 
   /**
-   * Converts a single message container to a markdown line block: "**Sender** Timestamp\n\nBody"
+   * Converts a single message container to a block: "--- Timestamp\n**Sender**\n\nBody"
    */
   function messageContainerToMarkdown(container) {
     const sender = getSender(container);
@@ -223,10 +223,9 @@
       body = [body, ...attachmentBodies].filter(Boolean).join("\n\n");
     }
 
-    const header = [sender && `**${sender}**`, timestamp].filter(Boolean).join(" ");
-    if (!header && !body) return "";
-    if (!body) return header + "\n";
-    return header ? header + "\n\n" + body : body;
+    if (!timestamp && !sender && !body) return "";
+    const senderLine = sender ? `**${sender}**` : "";
+    return `--- ${timestamp}\n${senderLine}\n\n${body}`.replace(/\n{4,}/g, "\n\n\n");
   }
 
   /**
@@ -362,23 +361,23 @@
   }
 
   /**
-   * For parts whose first line is timestamp-only (no sender), prepends the previous sender.
+   * For parts where the line after "--- date" is empty (compact view), fill with previous sender.
    */
   function fillMissingSenders(parts) {
     let lastSender = null;
     return parts.map((part) => {
       const lines = part.split("\n");
       const firstLine = lines[0] ?? "";
-      if (firstLine.startsWith("**")) {
-        const endBold = firstLine.indexOf("**", 2);
-        if (endBold !== -1) lastSender = firstLine.slice(2, endBold);
-        return part;
+      if (firstLine.startsWith("--- ") && lines[1] !== undefined) {
+        const secondLine = lines[1] ?? "";
+        if (secondLine.startsWith("**")) {
+          const endBold = secondLine.indexOf("**", 2);
+          if (endBold !== -1) lastSender = secondLine.slice(2, endBold);
+        } else if (lastSender != null) {
+          lines[1] = `**${lastSender}**`;
+        }
       }
-      if (lastSender != null && firstLine.trim()) {
-        lines[0] = `**${lastSender}** ${firstLine}`;
-        return lines.join("\n");
-      }
-      return part;
+      return lines.join("\n");
     });
   }
 
@@ -392,7 +391,7 @@
     await waitForVirtualListRender();
     let parts = scrollThreadCollected ?? getThreadMessageContainers().map(messageContainerToMarkdown).filter(Boolean);
     parts = fillMissingSenders(parts);
-    return Array.isArray(parts) ? parts.join("\n\n---\n\n") : "";
+    return Array.isArray(parts) ? parts.join("\n\n") : "";
   }
 
   function createCopyButton() {
