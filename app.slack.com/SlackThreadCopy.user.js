@@ -101,7 +101,10 @@
         return;
       }
 
-      if (el.classList?.contains("c-rich_text_expand_button")) {
+      if (
+        el.classList?.contains("c-rich_text_expand_button") ||
+        el.classList?.contains("c-message_attachment__text_expander")
+      ) {
         return;
       }
 
@@ -215,12 +218,43 @@
     return text.split("\n").map((line) => "> " + line).join("\n");
   }
 
+  function formatAsAttached(text) {
+    if (!text || !text.trim()) return "";
+    return `::: Attached\n${text}\n:::`;
+  }
+
   function getAttachmentBodies(container) {
-    const rows = container.querySelectorAll('[data-qa="message_attachment_slack_msg_text"]');
-    return Array.from(rows)
-      .map((row) => messageBodyToMarkdown(row))
-      .filter(Boolean)
-      .map(formatAsQuoted);
+    const attachments = container.querySelectorAll(".c-message_attachment");
+    const bodies = [];
+
+    for (const attachment of attachments) {
+      const slackRows = attachment.querySelectorAll(
+        '[data-qa="message_attachment_slack_msg_text"]'
+      );
+      for (const row of slackRows) {
+        const text = messageBodyToMarkdown(row);
+        if (text) bodies.push(formatAsQuoted(text));
+      }
+
+      const title = messageBodyToMarkdown(
+        attachment.querySelector('[data-qa="message_attachment_title"]')
+      );
+      const text = messageBodyToMarkdown(
+        attachment.querySelector('[data-qa="message_attachment_text"]')
+      );
+      const footerText = messageBodyToMarkdown(
+        attachment.querySelector('[data-qa="message_attachment_footer_text"]')
+      );
+      const footerTs = attachment
+        .querySelector('[data-qa="attachment-footer-timestamp"]')
+        ?.textContent?.trim();
+
+      const footer = [footerText, footerTs].filter(Boolean).join(" | ");
+      const attached = [title, text, footer].filter(Boolean).join("\n");
+      if (attached) bodies.push(formatAsAttached(attached));
+    }
+
+    return bodies;
   }
 
   /**
