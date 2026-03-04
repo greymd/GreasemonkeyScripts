@@ -194,9 +194,20 @@
   /**
    * Gets attachment text blocks (e.g. "From a thread" reply snippet) and converts them to markdown.
    */
+  /**
+   * Prefixes each line with "> " (blockquote style for quoted/embedded messages from other threads).
+   */
+  function formatAsQuoted(text) {
+    if (!text || !text.trim()) return "";
+    return text.split("\n").map((line) => "> " + line).join("\n");
+  }
+
   function getAttachmentBodies(container) {
     const rows = container.querySelectorAll('[data-qa="message_attachment_slack_msg_text"]');
-    return Array.from(rows).map((row) => messageBodyToMarkdown(row)).filter(Boolean);
+    return Array.from(rows)
+      .map((row) => messageBodyToMarkdown(row))
+      .filter(Boolean)
+      .map(formatAsQuoted);
   }
 
   /**
