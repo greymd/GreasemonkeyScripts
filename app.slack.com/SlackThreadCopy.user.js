@@ -84,7 +84,20 @@
         return;
       }
 
-      if (tag === "li" && el.closest?.("ul.p-rich_text_list")) {
+      if (tag === "ol" && el.classList?.contains("p-rich_text_list")) {
+        const items = el.querySelectorAll(":scope > li");
+        let num = 1;
+        for (const li of items) {
+          const inner = [];
+          for (const child of li.childNodes) walk(child, inner);
+          out.push("\n" + num + ". " + inner.join("").trim());
+          num += 1;
+        }
+        out.push("\n");
+        return;
+      }
+
+      if (tag === "li" && el.closest?.("ul.p-rich_text_list, ol.p-rich_text_list")) {
         return;
       }
 
