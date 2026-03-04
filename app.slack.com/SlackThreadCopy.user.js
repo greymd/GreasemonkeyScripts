@@ -211,7 +211,7 @@
   }
 
   /**
-   * Converts a single message container to a block: "--- Timestamp\n**Sender**\n\nBody"
+   * Converts a single message container to a block: "--- sender [date]\n\nBody"
    */
   function messageContainerToMarkdown(container) {
     const sender = getSender(container);
@@ -224,8 +224,8 @@
     }
 
     if (!timestamp && !sender && !body) return "";
-    const senderLine = sender ? `**${sender}**` : "";
-    return `--- ${timestamp}\n${senderLine}\n\n${body}`.replace(/\n{4,}/g, "\n\n\n");
+    const header = sender ? `--- ${sender} [${timestamp}]` : `--- [${timestamp}]`;
+    return `${header}\n\n${body}`.replace(/\n{4,}/g, "\n\n\n");
   }
 
   /**
@@ -361,21 +361,19 @@
   }
 
   /**
-   * For parts where the line after "--- date" is empty (compact view), fill with previous sender.
+   * For parts with "--- [date]" (no sender), replace with "--- lastSender [date]".
    */
   function fillMissingSenders(parts) {
     let lastSender = null;
     return parts.map((part) => {
       const lines = part.split("\n");
       const firstLine = lines[0] ?? "";
-      if (firstLine.startsWith("--- ") && lines[1] !== undefined) {
-        const secondLine = lines[1] ?? "";
-        if (secondLine.startsWith("**")) {
-          const endBold = secondLine.indexOf("**", 2);
-          if (endBold !== -1) lastSender = secondLine.slice(2, endBold);
-        } else if (lastSender != null) {
-          lines[1] = `**${lastSender}**`;
-        }
+      const matchWithSender = firstLine.match(/^--- (.+) \[(.+)\]$/);
+      const matchNoSender = firstLine.match(/^--- \[(.+)\]$/);
+      if (matchWithSender) {
+        lastSender = matchWithSender[1];
+      } else if (matchNoSender && lastSender != null) {
+        lines[0] = `--- ${lastSender} [${matchNoSender[1]}]`;
       }
       return lines.join("\n");
     });
