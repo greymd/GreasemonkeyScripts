@@ -154,9 +154,34 @@
   /**
    * Extracts timestamp label from a message container.
    */
+  /**
+   * Formats Unix timestamp (seconds) as "YYYY/MM/DD HH:mm:ss TZ" in local timezone.
+   */
+  function formatTimestampUnix(unixSeconds) {
+    const d = new Date(Math.floor(Number(unixSeconds)) * 1000);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const h = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    const s = String(d.getSeconds()).padStart(2, "0");
+    const tzParts = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(d);
+    const tz = tzParts.find((p) => p.type === "timeZoneName")?.value ?? "";
+    return `${y}/${m}/${day} ${h}:${min}:${s} ${tz}`;
+  }
+
   function getTimestamp(container) {
     const label = container.querySelector('[data-qa="timestamp_label"]');
-    return label ? label.textContent.trim() : "";
+    if (!label) return "";
+    const anchor = label.closest("a");
+    const dataTs = anchor?.getAttribute("data-ts");
+    if (dataTs != null) {
+      const unixSeconds = parseFloat(dataTs);
+      if (!Number.isNaN(unixSeconds)) {
+        return formatTimestampUnix(unixSeconds);
+      }
+    }
+    return label.textContent.trim();
   }
 
   /**
