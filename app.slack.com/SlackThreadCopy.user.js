@@ -362,6 +362,27 @@
   }
 
   /**
+   * For parts whose first line is timestamp-only (no sender), prepends the previous sender.
+   */
+  function fillMissingSenders(parts) {
+    let lastSender = null;
+    return parts.map((part) => {
+      const lines = part.split("\n");
+      const firstLine = lines[0] ?? "";
+      if (firstLine.startsWith("**")) {
+        const endBold = firstLine.indexOf("**", 2);
+        if (endBold !== -1) lastSender = firstLine.slice(2, endBold);
+        return part;
+      }
+      if (lastSender != null && firstLine.trim()) {
+        lines[0] = `**${lastSender}** ${firstLine}`;
+        return lines.join("\n");
+      }
+      return part;
+    });
+  }
+
+  /**
    * Builds full thread as plain text with simple markdown.
    * Scrolls through the list while collecting so we get all messages (virtual list drops off-screen items).
    */
@@ -369,7 +390,8 @@
     scrollThreadCollected = null;
     await scrollThreadToLoadAll();
     await waitForVirtualListRender();
-    const parts = scrollThreadCollected ?? getThreadMessageContainers().map(messageContainerToMarkdown).filter(Boolean);
+    let parts = scrollThreadCollected ?? getThreadMessageContainers().map(messageContainerToMarkdown).filter(Boolean);
+    parts = fillMissingSenders(parts);
     return Array.isArray(parts) ? parts.join("\n\n---\n\n") : "";
   }
 
